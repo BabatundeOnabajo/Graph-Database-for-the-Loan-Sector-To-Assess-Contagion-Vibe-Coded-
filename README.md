@@ -1,2 +1,6 @@
 # Graph-Database-for-the-Loan-Sector-To-Assess-Contagion-Vibe-Coded-
 This is a Single Page Application (SPA) that represents the connections different financial institutions have with one other to see the level of exposure that they accumulate when they lend to another financial institution. It was developed for the LMA Edge hackathon and was "vibe coded" in the AWS Bedrock platform using the Claude Opus 4 model.
+
+# Requiremets
+
+# Instructions
