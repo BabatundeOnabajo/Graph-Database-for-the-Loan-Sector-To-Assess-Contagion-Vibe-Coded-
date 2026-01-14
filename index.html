@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Business Financial Contagion Network</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #auth-container {
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        #auth-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        input[type="password"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .demo-button {
+            background-color: #28a745;
+        }
+        
+        .demo-button:hover {
+            background-color: #218838;
+        }
+        
+        #control-panel {
+            padding: 20px;
+            background-color: #f9f9f9;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        
+        .control-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        .control-section h4 {
+            margin-top: 0;
+        }
+        
+        input[type="text"], input[type="number"], select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            width: 200px;
+        }
+        
+        #visualization {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+        
+        .node {
+            cursor: pointer;
+        }
+        
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        
+        .node-label {
+            font-size: 12px;
+            pointer-events: none;
+        }
+        
+        #info-panel {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+        
+        #mode-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            background-color: #ffc107;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="auth-container">
+        <h2>Financial Contagion Network Visualization</h2>
+        <form id="auth-form">
+            <input type="password" id="api-key" placeholder="Enter Companies House API key (optional)">
+            <button type="submit">Use API Mode</button>
+            <button type="button" class="demo-button" onclick="enterDemoMode()">Use Demo Mode (No API Required)</button>
+            <span id="auth-status"></span>
+        </form>
+    </div>
+
+    <div id="control-panel" style="display: none;">
+        <div class="control-section" id="api-controls" style="display: none;">
+            <h4>API Search</h4>
+            <input type="text" id="company-search" placeholder="Search company name">
+            <button onclick="searchCompanies()">Search</button>
+        </div>
+        
+        <div class="control-section">
+            <h4>Add Company Manually</h4>
+            <input type="text" id="manual-company-name" placeholder="Company name">
+            <input type="text" id="manual-company-number" placeholder="Company number">
+            <select id="manual-company-type">
+                <option value="ltd">Limited Company</option>
+                <option value="plc">Public Limited Company</option>
+                <option value="partnership">Partnership</option>
+            </select>
+            <input type="number" id="manual-risk-score" placeholder="Risk score (0-100)" min="0" max="100">
+            <button onclick="addManualCompany()">Add Company</button>
+        </div>
+        
+        <div class="control-section">
+            <h4>Create Connection</h4>
+            <select id="connection-source">
+                <option value="">Select source company</option>
+            </select>
+            <select id="connection-target">
+                <option value="">Select target company</option>
+            </select>
+            <select id="connection-type">
+                <option value="financial">Financial</option>
+                <option value="officer">Shared Officer</option>
+                <option value="subsidiary">Subsidiary</option>
+                <option value="supplier">Supplier</option>
+            </select>
+            <input type="number" id="connection-strength" placeholder="Strength (1-10)" min="1" max="10">
+            <button onclick="addConnection()">Create Connection</button>
+        </div>
+        
+        <div class="control-section">
+            <h4>Presets</h4>
+            <button onclick="loadFinancialSectorDemo()">Load Financial Sector</button>
+            <button onclick="loadSupplyChainDemo()">Load Supply Chain</button>
+            <button onclick="loadConglomerateDemo()">Load Conglomerate</button>
+            <button onclick="clearNetwork()">Clear Network</button>
+        </div>
+    </div>
+
+    <div id="visualization">
+        <div id="mode-indicator" style="display: none;"></div>
+        <div class="legend" style="display: none;">
+            <h4>Risk Levels</h4>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #44ff44;"></div>
+                <span>Low Risk (0-40)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ffaa00;"></div>
+                <span>Medium Risk (40-70)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ff4444;"></div>
+                <span>High Risk (70-100)</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="info-panel" style="display: none;">
+        <h3>Company Details</h3>
+        <div id="company-info"></div>
+        <button onclick="simulateContagion()">Simulate Contagion</button>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        // Configuration
+        let apiKey = '';
+        let isApiMode = false;
+        let nodes = [];
+        let links = [];
+        let simulation;
+        let svg;
+        let g;
+        
+        // Authentication for API mode
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            apiKey = document.getElementById('api-key').value;
+            
+            if (!apiKey) {
+                alert('Please enter an API key or use Demo Mode');
+                return;
+            }
+            
+            try {
+                const response = await fetch('https://api.company-information.service.gov.uk/company/00000006', {
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(apiKey + ':')
+                    }
+                });
+                
+                if (response.ok) {
+                    isApiMode = true;
+                    document.getElementById('auth-status').innerHTML = '<span class="success">✓ API Authenticated</span>';
+                    document.getElementById('control-panel').style.display = 'flex';
+                    document.getElementById('api-controls').style.display = 'block';
+                    document.getElementById('mode-indicator').textContent = 'API Mode';
+                    document.getElementById('mode-indicator').style.display = 'block';
+                    document.querySelector('.legend').style.display = 'block';
+                    initializeVisualization();
+                } else {
+                    throw new Error('Invalid API key');
+                }
+            } catch (error) {
+                document.getElementById('auth-status').innerHTML = '<span class="error">✗ Authentication failed</span>';
+            }
+        });
+        
+        // Enter demo mode without API
+        function enterDemoMode() {
+            isApiMode = false;
+            document.getElementById('auth-status').innerHTML = '<span class="success">✓ Demo Mode Active</span>';
+            document.getElementById('control-panel').style.display = 'flex';
+            document.getElementById('api-controls').style.display = 'none';
+            document.getElementById('mode-indicator').textContent = 'Demo Mode';
+            document.getElementById('mode-indicator').style.display = 'block';
+            document.getElementById('mode-indicator').style.backgroundColor = '#28a745';
+            document.querySelector('.legend').style.display = 'block';
+            initializeVisualization();
+            loadFinancialSectorDemo(); // Load some initial demo data
+        }
+        
+        // Initialize D3 visualization
+        function initializeVisualization() {
+            const width = window.innerWidth;
+            const height = 600;
+            
+            // Clear any existing SVG
+            d3.select('#visualization svg').remove();
+            
+            svg = d3.select('#visualization')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            g = svg.append('g');
+            
+            // Add zoom behavior
+            svg.call(d3.zoom()
+                .extent([[0, 0], [width, height]])
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                }));
+            
+            // Initialize force simulation
+            simulation = d3.forceSimulation()
+                .force('link', d3.forceLink().id(d => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(30));
+        }
+        
+        // Add company manually
+        function addManualCompany() {
+            const name = document.getElementById('manual-company-name').value;
+            const number = document.getElementById('manual-company-number').value || 'MANUAL' + Date.now();
+            const type = document.getElementById('manual-company-type').value;
+            const riskScore = parseFloat(document.getElementById('manual-risk-score').value) || Math.random() * 100;
+            
+            if (!name) {
+                alert('Please enter a company name');
+                return;
+            }
+            
+            const company = {
+                company_number: number,
+                title: name,
+                company_type: type,
+                company_status: 'active',
+                address_snippet: 'UK'
+            };
+            
+            addCompanyNode(company, riskScore);
+            updateConnectionDropdowns();
+            
+            // Clear form
+            document.getElementById('manual-company-name').value = '';
+            document.getElementById('manual-company-number').value = '';
+            document.getElementById('manual-risk-score').value = '';
+        }
+        
+        // Add connection between companies
+        function addConnection() {
+            const sourceId = document.getElementById('connection-source').value;
+            const targetId = document.getElementById('connection-target').value;
+            const type = document.getElementById('connection-type').value;
+            const strength = parseFloat(document.getElementById('connection-strength').value) || 5;
+            
+            if (!sourceId || !targetId || sourceId === targetId) {
+                alert('Please select different source and target companies');
+                return;
+            }
+            
+            const existingLink = links.find(l => 
+                (l.source.id === sourceId && l.target.id === targetId) ||
+                (l.source.id === targetId && l.target.id === sourceId)
+            );
+            
+            if (!existingLink) {
+                links.push({
+                    source: sourceId,
+                    target: targetId,
+                    value: strength,
+                    type: type
+                });
+                updateVisualization();
+            }
+        }
+        
+        // Update connection dropdowns
+        function updateConnectionDropdowns() {
+            const sourceSelect = document.getElementById('connection-source');
+            const targetSelect = document.getElementById('connection-target');
+            
+            const options = '<option value="">Select company</option>' + 
+                nodes.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+            
+            sourceSelect.innerHTML = options;
+            targetSelect.innerHTML = options;
+        }
+        
+        // Load financial sector demo
+        function loadFinancialSectorDemo() {
+            clearNetwork();
+            
+            const companies = [
+                { company_number: 'BANK001', title: 'MegaBank PLC', company_type: 'plc', riskScore: 75 },
+                { company_number: 'BANK002', title: 'CityBank Ltd', company_type: 'ltd', riskScore: 60 },
+                { company_number: 'INS001', title: 'SafeGuard Insurance', company_type: 'ltd', riskScore: 45 },
+                { company_number: 'INV001', title: 'Capital Ventures', company_type: 'ltd', riskScore: 80 },
+                { company_number: 'FUND001', title: 'Growth Fund Management', company_type: 'ltd', riskScore: 55 },
+                { company_number: 'BROKER001', title: 'TradeWise Brokers', company_type: 'ltd', riskScore: 40 },
+                { company_number: 'FINTECH001', title: 'PayFast Technologies', company_type: 'ltd', riskScore: 65 }
+            ];
+            
+            companies.forEach(c => {
+                c.company_status = 'active';
+                c.address_snippet = 'London, UK';
+                addCompanyNode(c, c.riskScore);
+            });
+            
+            const relationships = [
+                { source: 'BANK001', target: 'BANK002', value: 9, type: 'financial' },
+                { source: 'BANK001', target: 'INV001', value: 8, type: 'financial' },
+                { source: 'BANK002', target: 'INS001', value: 7, type: 'financial' },
+                { source: 'INV001', target: 'FUND001', value: 8, type: 'subsidiary' },
+                { source: 'FUND001', target: 'BROKER001', value: 6, type: 'financial' },
+                { source: 'BROKER001', target: 'FINTECH001', value: 5, type: 'supplier' },
+                { source: 'FINTECH001', target: 'BANK001', value: 7, type: 'financial' },
+                { source: 'INS001', target: 'FUND001', value: 6, type: 'financial' }
+            ];
+            
+            links = relationships;
+            updateVisualization();
+            updateConnectionDropdowns();
+        }
+        
+        // Load supply chain demo
+        function loadSupplyChainDemo() {
+            clearNetwork();
+            
+            const companies = [
+                { company_number: 'MFG001', title: 'AutoParts Manufacturing', company_type: 'ltd', riskScore: 70 },
+                { company_number: 'SUP001', title: 'Steel Suppliers Ltd', company_type: 'ltd', riskScore: 45 },
+                { company_number: 'SUP002', title: 'Electronics Components', company_type: 'ltd', riskScore: 55 },
+                { company_number: 'LOG001', title: 'FastTrack Logistics', company_type: 'ltd', riskScore: 30 },
+                { company_number: 'DIST001', title: 'National Distributors', company_type: 'plc', riskScore: 40 },
+                { company_number: 'RET001', title: 'AutoShop Retail', company_type: 'ltd', riskScore: 50 }
+            ];
+            
+            companies.forEach(c => {
+                c.company_status = 'active';
+                c.address_snippet = 'Birmingham, UK';
+                addCompanyNode(c, c.riskScore);
+            });
+            
+            const relationships = [
+                { source: 'SUP001', target: 'MFG001', value: 9, type: 'supplier' },
+                { source: 'SUP002', target: 'MFG001', value: 8, type: 'supplier' },
+                { source: 'MFG001', target: 'LOG001', value: 7, type: 'supplier' },
+                { source: 'LOG001', target: 'DIST001', value: 6, type: 'supplier' },
+                { source: 'DIST001', target: 'RET001', value: 8, type: 'supplier' }
+            ];
+            
+            links = relationships;
+            updateVisualization();
+            updateConnectionDropdowns();
+        }
+        
+        // Load conglomerate demo
+        function loadConglomerateDemo() {
+            clearNetwork();
+            
+            const companies = [
+                { company_number: 'HOLD001', title: 'Global Holdings PLC', company_type: 'plc', riskScore: 60 },
+                { company_number: 'TECH001', title: 'TechCorp Solutions', company_type: 'ltd', riskScore: 50 },
+                { company_number: 'RETAIL001', title: 'Retail Chain Ltd', company_type: 'ltd', riskScore: 40 },
+                { company_number: 'PROP001', title: 'Property Investments', company_type: 'ltd', riskScore: 55 },
+                { company_number: 'MEDIA001', title: 'Media Productions', company_type: 'ltd', riskScore: 35 },
+                { company_number: 'ENERGY001', title: 'Green Energy Ltd', company_type: 'ltd', riskScore: 45 }
+            ];
+            
+            companies.forEach(c => {
+                c.company_status = 'active';
+                c.address_snippet = 'Manchester, UK';
+                addCompanyNode(c, c.riskScore);
+            });
+            
+            const relationships = [
+                { source: 'HOLD001', target: 'TECH001', value: 10, type: 'subsidiary' },
+                { source: 'HOLD001', target: 'RETAIL001', value: 10, type: 'subsidiary' },
+                { source: 'HOLD001', target: 'PROP001', value: 10, type: 'subsidiary' },
+                { source: 'HOLD001', target: 'MEDIA001', value: 10, type: 'subsidiary' },
+                { source: 'HOLD001', target: 'ENERGY001', value: 10, type: 'subsidiary' },
+                { source: 'TECH001', target: 'MEDIA001', value: 5, type: 'financial' },
+                { source: 'PROP001', target: 'RETAIL001', value: 6, type: 'financial' }
+            ];
+            
+            links = relationships;
+            updateVisualization();
+            updateConnectionDropdowns();
+        }
+        
+        // Clear network
+        function clearNetwork() {
+            nodes = [];
+            links = [];
+            updateVisualization();
+            updateConnectionDropdowns();
+        }
+        
+        // Search companies using Companies House API (only in API mode)
+        async function searchCompanies() {
+            if (!isApiMode) return;
+            
+            const searchTerm = document.getElementById('company-search').value;
+            if (!searchTerm) return;
+            
+            try {
+                const response = await fetch(`https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(searchTerm)}&items_per_page=5`, {
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(apiKey + ':')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(company => {
+                        addCompanyNode(company);
+                    });
+                    updateConnectionDropdowns();
+                }
+            } catch (error) {
+                console.error('Search failed:', error);
+                alert('Search failed. Please check your connection and API key.');
+            }
+        }
+        
+        // Add a company node to the network
+        function addCompanyNode(company, riskScore = null) {
+            const existingNode = nodes.find(n => n.id === company.company_number);
+            if (!existingNode) {
+                nodes.push({
+                    id: company.company_number,
+                    name: company.title || company.company_name,
+                    type: company.company_type,
+                    status: company.company_status,
+                    address: company.address_snippet,
+                    riskScore: riskScore || Math.random() * 100,
+                    size: Math.random() * 10 + 15,
+                    originalRiskScore: riskScore || Math.random() * 100
+                });
+                updateVisualization();
+            }
+        }
+        
+        // Update D3 visualization
+        function updateVisualization() {
+            if (!g) return;
+            
+            // Clear previous elements
+            g.selectAll('.link').remove();
+            g.selectAll('.node').remove();
+            
+            // Add links
+            const link = g.append('g')
+                .attr('class', 'links')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('stroke-width', d => Math.sqrt(d.value))
+                .style('stroke', d => {
+                    switch(d.type) {
+                        case 'financial': return '#ff7f0e';
+                        case 'officer': return '#2ca02c';
+                        case 'subsidiary': return '#1f77b4';
+                        case 'supplier': return '#9467bd';
+                        default: return '#999';
+                    }
+                });
+            
+            // Add nodes
+            const node = g.append('g')
+                .attr('class', 'nodes')
+                .selectAll('g')
+                .data(nodes)
+                .enter().append('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+            
+            // Add circles
+            node.append('circle')
+                .attr('r', d => d.size)
+                .attr('fill', d => {
+                    const risk = d.riskScore;
+                    if (risk > 70) return '#ff4444';
+                    if (risk > 40) return '#ffaa00';
+                    return '#44ff44';
+                })
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .on('click', showCompanyDetails);
+            
+            // Add labels
+            node.append('text')
+                .attr('class', 'node-label')
+                .attr('dx', 12)
+                .attr('dy', 4)
+                .text(d => d.name)
+                .style('font-size', '12px');
+            
+            // Update simulation
+            simulation
+                .nodes(nodes)
+                .on('tick', ticked);
+            
+            simulation.force('link')
+                .links(links);
+            
+            simulation.alpha(1).restart();
+            
+            function ticked() {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                
+                node
+                    .attr('transform', d => `translate(${d.x},${d.y})`);
+            }
+        }
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // Show company details
+        function showCompanyDetails(event, d) {
+            const infoPanel = document.getElementById('info-panel');
+            const companyInfo = document.getElementById('company-info');
+            
+            infoPanel.style.display = 'block';
+            companyInfo.innerHTML = `
+                <p><strong>Company Number:</strong> ${d.id}</p>
+                <p><strong>Name:</strong> ${d.name}</p>
+                <p><strong>Type:</strong> ${d.type}</p>
+                <p><strong>Status:</strong> ${d.status}</p>
+                <p><strong>Address:</strong> ${d.address || 'N/A'}</p>
+                <p><strong>Current Risk Score:</strong> ${d.riskScore.toFixed(2)}%</p>
+                <p><strong>Original Risk Score:</strong> ${d.originalRiskScore.toFixed(2)}%</p>
+                <p><strong>Connections:</strong> ${links.filter(l => 
+                    (l.source.id === d.id || l.target.id === d.id) || 
+                    (l.source === d.id || l.target === d.id)
+                ).length}</p>
+            `;
+            
+            // Store selected company for contagion simulation
+            window.selectedCompany = d;
+        }
+        
+        // Simulate financial contagion
+        function simulateContagion() {
+            if (!window.selectedCompany) return;
+            
+            const impactFactor = 0.3; // How much risk spreads to connected companies
+            const rounds = 3; // How many degrees of separation the contagion spreads
+            
+            // Reset all risk scores to original
+            nodes.forEach(n => {
+                n.riskScore = n.originalRiskScore;
+            });
+            
+            // Start contagion from selected company
+            window.selectedCompany.riskScore = Math.min(100, window.selectedCompany.riskScore + 30);
+            
+            // Spread contagion
+            for (let round = 0; round < rounds; round++) {
+                const currentRisks = {};
+                nodes.forEach(n => currentRisks[n.id] = n.riskScore);
+                
+                links.forEach(link => {
+                    const sourceId = link.source.id || link.source;
+                    const targetId = link.target.id || link.target;
+                    const sourceNode = nodes.find(n => n.id === sourceId);
+                    const targetNode = nodes.find(n => n.id === targetId);
+                    
+                    if (sourceNode && targetNode) {
+                        const riskIncrease = (currentRisks[sourceId] - sourceNode.originalRiskScore) * impactFactor * (link.value / 10);
+                        targetNode.riskScore = Math.min(100, targetNode.riskScore + riskIncrease);
+                        
+                        const reverseRiskIncrease = (currentRisks[targetId] - targetNode.originalRiskScore) * impactFactor * (link.value / 10);
+                        sourceNode.riskScore = Math.min(100, sourceNode.riskScore + reverseRiskIncrease);
+                    }
+                });
+            }
+            
+            updateVisualization();
+            showCompanyDetails(null, window.selectedCompany);
+        }
+    </script>
+</body>
+</html>
